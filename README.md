@@ -4,10 +4,13 @@
 
 ## About
 
-This is a simple image viewer lets you quickly tag (rename) image files.
-It also includes some basic editing functionality. 
+This is a simple image viewer lets you quickly iterate through a directory and tag (rename) image files using configurable buttons.
 
-Forked from https://github.com/Palexer/image-viewer
+Commissioned for a friend for this specific purpose, hence the default tags. 
+
+It also includes some basic editing functionality carried over from Palexer/image-viewer. 
+
+Graciously forked from [image-viewer](https://github.com/Palexer/image-viewer)
 
 
 ## Screenshot
@@ -23,9 +26,9 @@ Forked from https://github.com/Palexer/image-viewer
 
 ## Installation
 
-*Note for Mac users: There might be a warning, that the OS doesn't trust the application. In this case press Ctrl+left click on the
-application and select open. Next time the app should open like any other program.
+The executable is currently available for Windows. Just download the archive from the [releases section](https://github.com/jjwinters/image-tagger/releases), extract and install it as usual.
 
+Compiling other OS/architectures are possible if desired, I just haven't tried it and my testing options are limited.
 
 ## Contributing
 
@@ -35,21 +38,27 @@ application and select open. Next time the app should open like any other progra
 
 ## Development
 
-### Linux
+### Linux (Ubuntu)
 
 The following packages are required:
 - gcc
 - pkg-config
 - libgl1-mesa-dev
 - xorg-dev
+- [fyne-cross](https://github.com/fyne-io/fyne-cross)    (for cross compile)
+- docker        (for fyne-cross)
 
 ## ToDo
 
 - Hotkeys for tag buttons.
 
+## Bugs
+
+- Windows may give Permission Denied error when attempting to rename files. This may have to do with file permissions or antivirus.
+
 ## Help
 
-If you need any help, feel free to open a [new Issue](https://github.com/Palexer/image-viewer/issues/new).
+If you need any help, feel free to open a new [Issue](https://github.com/jjwinters/image-tagger/issues).
 
 ## License
 

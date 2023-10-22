@@ -166,8 +166,6 @@ func (a *App) loadStatusBar() *fyne.Container {
 	a.statusBar = container.NewVBox(
 		widget.NewSeparator(),
 		container.NewHBox(
-			//a.leftArrow,
-			//a.rightArrow,
 			layout.NewSpacer(),
 			a.zoomLabel,
 			a.resetZoomBtn,
