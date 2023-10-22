@@ -29,13 +29,13 @@ func (a *App) openFileDialog() {
 			return
 		}
 
-		file, err := os.Open(reader.URI().String()[7:])
+		a.file, err = os.Open(reader.URI().String()[7:])
 		if err != nil {
 			dialog.ShowError(err, a.mainWin)
 			return
 		}
 
-		err = a.open(file, true)
+		err = a.open(a.file, true)
 		if err != nil {
 			dialog.ShowError(err, a.mainWin)
 			return
@@ -72,31 +72,15 @@ func (a *App) open(file *os.File, folder bool) error {
 	// save all images from folder for next/back
 	if folder {
 		a.img.Directory = filepath.Dir(file.Name())
-		openFolder, _ := os.Open(a.img.Directory)
-		a.img.ImagesInFolder, _ = openFolder.Readdirnames(0)
-
-		// filter image files
-		imgList := []string{}
-		for _, v := range a.img.ImagesInFolder {
-			if strings.HasSuffix(strings.ToLower(v), ".png") || strings.HasSuffix(strings.ToLower(v), ".jpg") || strings.HasSuffix(strings.ToLower(v), ".jpeg") || strings.HasSuffix(strings.ToLower(v), ".gif") {
-				imgList = append(imgList, v)
-			}
-		}
-		a.img.ImagesInFolder = imgList
-		sort.Strings(a.img.ImagesInFolder) // sort array alphabetically
-
-		// get first index value
-		for i, v := range a.img.ImagesInFolder {
-			if filepath.Base(file.Name()) == v {
-				a.img.index = i
-			}
-		}
+        a.refreshImagesInFolder(file)
 	}
 
 	a.widthLabel.SetText(fmt.Sprintf("Width:   %dpx", a.img.OriginalImage.Bounds().Max.X))
 	a.heightLabel.SetText(fmt.Sprintf("Height: %dpx", a.img.OriginalImage.Bounds().Max.Y))
 
-	a.mainWin.SetTitle(fmt.Sprintf("Image Viewer - %v", (strings.Split(a.img.Path, "/")[len(strings.Split(a.img.Path, "/"))-1])))
+    fileName := strings.Split(a.img.Path, "/")[len(strings.Split(a.img.Path, "/"))-1]
+	a.mainWin.SetTitle(fmt.Sprintf("Image Tagger - %v", fileName))
+    a.renamePreview.SetText(fileName)
 
 	// append to last opened images
 	a.lastOpened = append(a.lastOpened, file.Name())
@@ -113,11 +97,17 @@ func (a *App) open(file *os.File, folder bool) error {
 	a.resetBtn.Enable()
 	a.leftArrow.Enable()
 	a.rightArrow.Enable()
+	a.confirmArrow.Enable()
 	a.deleteBtn.Enable()
 	a.renameBtn.Enable()
 	a.zoomIn.Enable()
 	a.zoomOut.Enable()
 	a.resetZoomBtn.Enable()
+
+    for i := 0; i < tagBtnTotal; i++ {
+        a.tagBtns[i].Enable()
+    }
+
 	return nil
 }
 
@@ -180,17 +170,44 @@ func (a *App) deleteFile() {
 	}
 }
 
+func (a *App) refreshImagesInFolder(file *os.File) {
+    openFolder, _ := os.Open(a.img.Directory)
+    a.img.ImagesInFolder, _ = openFolder.Readdirnames(0)
+    // filter image files
+    imgList := []string{}
+    for _, v := range a.img.ImagesInFolder {
+        if strings.HasSuffix(strings.ToLower(v), ".png") || strings.HasSuffix(strings.ToLower(v), ".jpg") || strings.HasSuffix(strings.ToLower(v), ".jpeg") || strings.HasSuffix(strings.ToLower(v), ".gif") {
+            imgList = append(imgList, v)
+        }
+    }
+    a.img.ImagesInFolder = imgList
+    sort.Strings(a.img.ImagesInFolder) // sort array alphabetically
+
+    // get first index value
+    for i, v := range a.img.ImagesInFolder {
+        if filepath.Base(file.Name()) == v {
+            a.img.index = i
+        }
+    }
+}
+
+func (a *App) renameImage(s string) {
+    newPath := strings.TrimSuffix(a.img.Path, filepath.Base(a.img.Path)) + s
+    if err := os.Rename(a.img.Path, newPath); err != nil {
+        dialog.ShowError(fmt.Errorf("failed to rename file: %v", err), a.mainWin)
+        return
+    }
+    a.img.Path = newPath
+    a.refreshImagesInFolder(a.file)
+    a.mainWin.SetTitle("Image Tagger - " + s)
+    //a.mainWin.Canvas().Overlays().Top().Hide()
+}
+
 func (a *App) renameDialog() {
 	entry := newEnterEntry()
 	entry.enterFunc = func(s string) {
-		newPath := strings.TrimSuffix(a.img.Path, filepath.Base(a.img.Path)) + s
-		if err := os.Rename(a.img.Path, newPath); err != nil {
-			dialog.ShowError(fmt.Errorf("failed to rename file: %v", err), a.mainWin)
-			return
-		}
-		a.img.Path = newPath
-		a.mainWin.SetTitle("Image Viewer - " + s)
-		a.mainWin.Canvas().Overlays().Top().Hide()
+        a.renameImage(s)
+        a.mainWin.Canvas().Overlays().Top().Hide()
 	}
 
 	entry.SetPlaceHolder(filepath.Base(a.img.Path))
@@ -202,7 +219,7 @@ func (a *App) renameDialog() {
 				return
 			}
 			a.img.Path = newPath
-			a.mainWin.SetTitle("Image Viewer - " + entry.Text)
+			a.mainWin.SetTitle("Image Tagger - " + entry.Text)
 		}
 	}, a.mainWin)
 }

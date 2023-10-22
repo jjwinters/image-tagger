@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+    "path/filepath"
 	"runtime"
 	"strconv"
+    "strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -50,7 +52,9 @@ func (a *App) nextImage(forward, folder bool) {
 		a.img.index--
 	}
 
-	file, err := os.Open(a.img.Directory + "/" + a.img.ImagesInFolder[a.img.index])
+    fileName := a.img.ImagesInFolder[a.img.index]
+    fileFullName := a.img.Directory + "/" + fileName
+	file, err := os.Open(fileFullName)
 	if err != nil {
 		dialog.ShowError(err, a.mainWin)
 		return
@@ -60,11 +64,17 @@ func (a *App) nextImage(forward, folder bool) {
 	} else {
 		a.open(file, false)
 	}
+    a.renamePreview.SetText(fileName)
+}
+
+func (a *App) nextImageWithSave() {
+    a.renameImage(a.renamePreview.Text)
+    a.nextImage(true, false)
 }
 
 func (a *App) fullscreenMode() {
 	if !a.focus {
-		a.fullscreenWin = a.app.NewWindow("Image Viewer - " + a.img.Path)
+		a.fullscreenWin = a.app.NewWindow("Image Tagger - " + a.img.Path)
 		a.fullscreenWin.SetFullScreen(true)
 		a.fullscreenWin.Canvas().SetOnTypedKey(func(key *fyne.KeyEvent) {
 			switch key.Name {
@@ -87,7 +97,7 @@ func (a *App) fullscreenMode() {
 	}
 }
 
-func (a *App) loadStatusBar() *fyne.Container {
+func (a *App) loadBottomBar() *fyne.Container {
 	a.leftArrow = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), func() {
 		a.nextImage(false, false)
 	})
@@ -95,9 +105,41 @@ func (a *App) loadStatusBar() *fyne.Container {
 	a.rightArrow = widget.NewButtonWithIcon("", theme.NavigateNextIcon(), func() {
 		a.nextImage(true, false)
 	})
+
+	a.confirmArrow = widget.NewButtonWithIcon("", theme.ConfirmIcon(), func() {
+		a.nextImageWithSave()
+	})
 	a.leftArrow.Disable()
 	a.rightArrow.Disable()
+	a.confirmArrow.Disable()
 
+    a.renamePreview = widget.NewEntry()
+    a.renamePreview.SetPlaceHolder("filename preview")
+    helpLabel := widget.NewLabel("Arrows (arrow keys) move to next/prev image. Check button (return key) saves and moves to next.")
+
+    a.bottomBar = container.NewVBox(
+        container.New(layout.NewGridLayout(3),
+            layout.NewSpacer(),
+            a.renamePreview,
+            layout.NewSpacer(),
+        ),
+        container.NewHBox(
+            layout.NewSpacer(),
+            a.leftArrow,
+            a.rightArrow,
+            a.confirmArrow,
+            layout.NewSpacer(),
+        ),
+        container.NewHBox(
+            layout.NewSpacer(),
+            helpLabel,
+            layout.NewSpacer(),
+        ),
+    )
+    return a.bottomBar
+}
+
+func (a *App) loadStatusBar() *fyne.Container {
 	a.deleteBtn = widget.NewButtonWithIcon("", theme.DeleteIcon(), func() {
 		dialog.ShowConfirm("Delte file?", "Do you really want to delete this image?\n This action can't be undone.", func(b bool) {
 			if b {
@@ -124,8 +166,8 @@ func (a *App) loadStatusBar() *fyne.Container {
 	a.statusBar = container.NewVBox(
 		widget.NewSeparator(),
 		container.NewHBox(
-			a.leftArrow,
-			a.rightArrow,
+			//a.leftArrow,
+			//a.rightArrow,
 			layout.NewSpacer(),
 			a.zoomLabel,
 			a.resetZoomBtn,
@@ -321,15 +363,88 @@ func (a *App) loadInformationTab() *container.TabItem {
 	a.heightLabel = widget.NewLabel("Height: ")
 	a.imgSize = widget.NewLabel("Size: ")
 	a.imgLastMod = widget.NewLabel("Last modified: ")
-	return container.NewTabItem("Information", container.NewScroll(
+
+    a.tagBtnLabel = widget.NewLabel("Tag Buttons: ")
+    a.tagBtns = make([]*widget.Button, 0, tagBtnTotal)
+    a.tagBtnEntries = make([]*widget.Entry, 0, tagBtnTotal)
+    a.tagBtnGrid = container.New(layout.NewGridLayout(3))
+
+    defaultButtonTags := DefaultButtonTags()
+
+    for i := 0; i < tagBtnTotal; i++ {
+        //fmt.Fprintf(os.Stderr, "DEBUG tagBtnTotal loop i=%d \n", i)
+        index := i
+
+        newTagButton := widget.NewButton(defaultButtonTags[i], func() {
+            delim := " "
+            if a.tagBtns[index].Text == "" {
+                delim = ""
+            }
+            fileName := a.img.ImagesInFolder[a.img.index]
+            fileExt := filepath.Ext(fileName)
+            fileName = strings.TrimSuffix(fileName, fileExt)
+            fileName = fileName + delim + a.tagBtns[index].Text + fileExt
+            a.renamePreview.SetText(fileName)
+        })
+        newTagButton.Disable()
+        a.tagBtns = append(a.tagBtns, newTagButton)
+        a.tagBtnGrid.Add(a.tagBtns[i])
+
+        a.tagBtnEntries = append(a.tagBtnEntries, widget.NewEntry())
+        a.tagBtnGrid.Add(a.tagBtnEntries[i])
+        a.tagBtnEntries[i].SetPlaceHolder("none")
+        a.tagBtnEntries[i].Hide()
+    }
+
+    a.editTagsBtn = widget.NewButton("Edit Tags", func() {
+            a.tagBtnLabel.SetText("Tag Buttons: (Editing)")
+            for i := 0; i < tagBtnTotal; i++ {
+                a.tagBtns[i].Hide()
+                a.tagBtnEntries[i].SetText(a.tagBtns[i].Text)
+                a.tagBtnEntries[i].Show()
+            }
+
+            a.editTagsBtn.Disable()
+            a.editTagsBtn.Hide()
+            a.saveTagsBtn.Enable()
+            a.saveTagsBtn.Show()
+        })
+
+    a.saveTagsBtn = widget.NewButton("Save Tag Buttons", func() { 
+            a.tagBtnLabel.SetText("Tag Buttons: ")
+            for i := 0; i < tagBtnTotal; i++ {
+                a.tagBtns[i].SetText(a.tagBtnEntries[i].Text)
+                a.tagBtns[i].Show()
+                a.tagBtnEntries[i].Hide()
+            }
+
+            a.editTagsBtn.Enable()
+            a.editTagsBtn.Show()
+            a.saveTagsBtn.Disable()
+            a.saveTagsBtn.Hide()
+
+        })
+    a.saveTagsBtn.Disable()
+    a.saveTagsBtn.Hide()
+
+    a.widthLabel.Hide()
+    a.heightLabel.Hide()
+    a.imgSize.Hide()
+
+	return container.NewTabItem("Tagger", container.NewScroll(
 		container.NewVBox(
 			a.widthLabel,
 			a.heightLabel,
 			a.imgSize,
 			a.imgLastMod,
+            a.tagBtnLabel,
+            a.tagBtnGrid,
+            a.editTagsBtn,
+            a.saveTagsBtn,
 		),
 	))
 }
+
 
 func (a *App) loadMainUI() fyne.CanvasObject {
 	a.mainWin.SetMaster()
@@ -385,14 +500,20 @@ func (a *App) loadMainUI() fyne.CanvasObject {
 	a.image = &canvas.Image{}
 	a.image.FillMode = canvas.ImageFillContain
 
-	a.split = container.NewHSplit(
+    a.bottomBarSplit = container.NewVSplit(
 		a.image,
+        a.loadBottomBar(),
+    )
+	a.bottomBarSplit.SetOffset(0.85)
+
+	a.split = container.NewHSplit(
 		container.NewAppTabs(
 			a.loadInformationTab(),
 			a.loadEditorTab(),
 		),
+        a.bottomBarSplit,
 	)
-	a.split.SetOffset(0.90)
+	a.split.SetOffset(0.30)
 	layout := container.NewBorder(nil, a.loadStatusBar(), nil, nil, a.split)
 	return layout
 }

@@ -46,6 +46,8 @@ func (a *App) loadKeyboardShortcuts() {
 			a.nextImage(true, false)
 		case fyne.KeyLeft:
 			a.nextImage(false, false)
+		case fyne.KeyReturn:
+			a.nextImageWithSave()
 		// delete images with delete key
 		case fyne.KeyDelete:
 			if a.image.Image != nil {

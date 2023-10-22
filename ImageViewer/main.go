@@ -16,6 +16,46 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+const (
+    // tagBtnTotal must match size of DefaultButtonTags()
+    tagBtnTotal = 30
+)
+
+func DefaultButtonTags() []string {
+    return []string {
+        "AC",
+        "AC DATA",
+        "ATTIC",
+        "BASEMENT",
+        "BOILER",
+        "BOILER DATA",
+        "BLOWER",
+        "BUFFER",
+        "FRONT",
+        "FURNACE",
+        "FURNACE DATA",
+        "GARAGE",
+        "GAS",
+        "GRADE",
+        "HEADER",
+        "HP",
+        "HP DATA",
+        "HRV",
+        "HRV DATA",
+        "INSUL",
+        "LEFT",
+        "PONY",
+        "REAR",
+        "RIGHT",
+        "TANK",
+        "TANK DATA",
+        "TAX",
+        "",
+        "",
+        "",
+    }
+}
+
 type enterEntry struct {
 	widget.Entry
 	enterFunc func(s string)
@@ -88,6 +128,7 @@ type App struct {
 	mainModKey desktop.Modifier
 	focus      bool
 	lastOpened []string
+    file       *os.File
 
 	image *canvas.Image
 
@@ -107,10 +148,21 @@ type App struct {
 	heightLabel *widget.Label
 	imgSize     *widget.Label
 	imgLastMod  *widget.Label
+	tagBtnLabel *widget.Label
+    tagBtns     []*widget.Button
+    tagBtnEntries   []*widget.Entry
+    tagBtnGrid  *fyne.Container
+    saveTagsBtn *widget.Button
+    editTagsBtn *widget.Button
+
+	bottomBar       *fyne.Container
+	bottomBarSplit  *container.Split
+    renamePreview   *widget.Entry
+	leftArrow       *widget.Button
+	rightArrow      *widget.Button
+	confirmArrow    *widget.Button
 
 	statusBar    *fyne.Container
-	leftArrow    *widget.Button
-	rightArrow   *widget.Button
 	deleteBtn    *widget.Button
 	renameBtn    *widget.Button
 	zoomIn       *widget.Button
@@ -148,8 +200,8 @@ func (a *App) init() {
 }
 
 func main() {
-	a := app.NewWithID("io.github.palexer.image-viewer")
-	w := a.NewWindow("Image Viewer")
+	a := app.NewWithID("io.github.jjwinters.image-tagger")
+	w := a.NewWindow("Image Tagger")
 	a.SetIcon(resourceIconPng)
 	w.SetIcon(resourceIconPng)
 	ui := &App{app: a, mainWin: w}
@@ -165,3 +217,4 @@ func main() {
 	w.Resize(fyne.NewSize(1200, 750))
 	w.ShowAndRun()
 }
+
