@@ -17,6 +17,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/disintegration/gift"
+//    "github.com/spf13/viper"
 )
 
 func removeDuplicates(elements []string) []string {
@@ -367,7 +368,8 @@ func (a *App) loadInformationTab() *container.TabItem {
     a.tagBtnEntries = make([]*widget.Entry, 0, tagBtnTotal)
     a.tagBtnGrid = container.New(layout.NewGridLayout(3))
 
-    defaultButtonTags := DefaultButtonTags()
+    //defaultButtonTags := DefaultButtonTags()
+    defaultButtonTags := a.config.GetStringSlice("buttontags")
 
     for i := 0; i < tagBtnTotal; i++ {
         //fmt.Fprintf(os.Stderr, "DEBUG tagBtnTotal loop i=%d \n", i)
@@ -410,11 +412,16 @@ func (a *App) loadInformationTab() *container.TabItem {
 
     a.saveTagsBtn = widget.NewButton("Save Tag Buttons", func() { 
             a.tagBtnLabel.SetText("Tag Buttons: ")
+            newTags := []string{}
             for i := 0; i < tagBtnTotal; i++ {
                 a.tagBtns[i].SetText(a.tagBtnEntries[i].Text)
+                newTags = append(newTags, a.tagBtnEntries[i].Text)
                 a.tagBtns[i].Show()
                 a.tagBtnEntries[i].Hide()
             }
+
+            a.config.Set("buttontags", newTags)
+            a.WriteConfig()
 
             a.editTagsBtn.Enable()
             a.editTagsBtn.Show()

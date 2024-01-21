@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+    "path/filepath"  // Is this for generating windows-friendly filepaths?
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -14,12 +15,18 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+    "github.com/spf13/viper"
 )
 
 const (
     // tagBtnTotal must match size of DefaultButtonTags()
     tagBtnTotal = 30
+    viperFilename = "config"
 )
+
+func viperPath() string {
+    return filepath.Join(os.Getenv("HOME"), ".imagetagger")
+}
 
 func DefaultButtonTags() []string {
     return []string {
@@ -123,6 +130,7 @@ func parseURL(urlStr string) *url.URL {
 type App struct {
 	app     fyne.App
 	mainWin fyne.Window
+    config  *viper.Viper
 
 	img        Img
 	mainModKey desktop.Modifier
@@ -199,13 +207,43 @@ func (a *App) init() {
 	}
 }
 
+func (a *App) WriteConfig() {
+    if err := os.MkdirAll(viperPath(), os.ModePerm); err != nil {
+        fmt.Errorf("Error creating config file directory: %w. Default configs will be used.\n", err)
+    }
+    if err := a.config.WriteConfigAs(filepath.Join(viperPath(), viperFilename)); err != nil {
+        fmt.Errorf("Error writing config file: %w. Updates to configs will not be saved.\n", err)
+    }
+}
+
 func main() {
+    viperConfig := viper.New()
+
+    viperConfig.SetDefault("auto-generated-file", "This file managed by Image Tagger. Do not modify!")
+    viperConfig.SetDefault("ImagePath", os.Getenv("HOME"))
+    viperConfig.SetDefault("ButtonTags", DefaultButtonTags() )
+
+    viperConfig.SetConfigName(viperFilename)       // name of config file (without extension)
+    viperConfig.SetConfigType("yaml")
+    viperConfig.AddConfigPath(viperPath())
+
+    if err := viperConfig.ReadInConfig(); err != nil {
+        if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+            // Config file not found; use defaults.
+            fmt.Printf("No config file found; defaults will be used.\n")
+        } else {
+            // Config file was found but another error was produced
+            fmt.Errorf("Error reading config: %w. Default configs will be used.\n", err)
+        }
+    }
+
 	a := app.NewWithID("io.github.jjwinters.image-tagger")
 	w := a.NewWindow("Image Tagger")
 	a.SetIcon(resourceIconPng)
 	w.SetIcon(resourceIconPng)
-	ui := &App{app: a, mainWin: w}
+	ui := &App{app: a, mainWin: w, config: viperConfig}
 	ui.init()
+    ui.WriteConfig()
 	w.SetContent(ui.loadMainUI())
 	if len(os.Args) > 1 {
 		file, err := os.Open(os.Args[1])

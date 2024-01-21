@@ -43,6 +43,15 @@ func (a *App) openFileDialog() {
 		defer reader.Close()
 	}, a.mainWin)
 	dialog.SetFilter(storage.NewExtensionFileFilter([]string{".png", ".jpeg", ".jpg", ".gif"}))
+
+    // Not easy to find how to set start location for openFileDialog
+    // https://github.com/fyne-io/fyne/pull/1379/files
+    startLocation, err1 := storage.ListerForURI(storage.NewFileURI(a.config.GetString("ImagePath")))
+    if err1 != nil {
+		fmt.Errorf("Error finding startLocation %v", err1)
+    }
+    dialog.SetLocation(startLocation)
+
 	dialog.Show()
 }
 
@@ -81,6 +90,10 @@ func (a *App) open(file *os.File, folder bool) error {
     fileName := strings.Split(a.img.Path, "/")[len(strings.Split(a.img.Path, "/"))-1]
 	a.mainWin.SetTitle(fmt.Sprintf("Image Tagger - %v", fileName))
     a.renamePreview.SetText(fileName)
+
+    // Save the image path to the config.
+    a.config.Set("imagepath", a.img.Directory)
+    a.WriteConfig()
 
 	// append to last opened images
 	a.lastOpened = append(a.lastOpened, file.Name())
